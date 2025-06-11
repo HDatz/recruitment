@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item key="hasShownOverlayPopupBefore" value="true"/>
+	<section name="java.lang.Class">
+		<item key="replaceBarOpen" value="false"/>
+		<list key="findhistory">
+			<item value="findById"/>
+			<item value="thongbaoService"/>
+			<item value="thongbaoservice"/>
+			<item value="updateBaiDangTuyenDun"/>
+			<item value="updated.setSoLuongTuyen(soLuongTuyen);"/>
+			<item value="updateBaiDang"/>
+			<item value="avatars"/>
+			<item value="thongBaoService"/>
+			<item value="getUngVienByBaiDang"/>
+			<item value="findById(baiDangId)"/>
+			<item value="createDonUngTuyen"/>
+			<item value="getAllBaiDangTuyenDungByNhaTuyenDung"/>
+			<item value="createBaiDang"/>
+			<item value="BaiDang"/>
+			<item value="PreAuthorize"/>
+		</list>
+	</section>
+</section>

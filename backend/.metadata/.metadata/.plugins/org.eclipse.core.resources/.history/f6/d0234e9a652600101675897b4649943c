@@ -1,0 +1,205 @@
+package com.example.dai_nam.controller;
+
+import java.util.Date;
+import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.sql.Timestamp;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+
+import com.example.dai_nam.model.BaiDangTuyenDung;
+import com.example.dai_nam.model.BaiVietHuongNghiep;
+import com.example.dai_nam.model.DonUngTuyen;
+import com.example.dai_nam.model.NhaTuyenDung;
+import com.example.dai_nam.model.SinhVien;
+import com.example.dai_nam.repository.BaiDangTuyenDungRepository;
+import com.example.dai_nam.repository.DonUngTuyenRepository;
+import com.example.dai_nam.repository.SinhVienRepository;
+import com.example.dai_nam.service.SinhVienService;
+
+@CrossOrigin(origins = "http://127.0.0.1:5500")
+@RestController
+@RequestMapping("/api/SinhVien")
+public class SinhVienController {
+	
+	 @Autowired
+	    private SinhVienRepository sinhVienRepository;
+
+	    @Autowired
+	    private BaiDangTuyenDungRepository baiDangTuyenDungRepository;
+
+	    @Autowired
+	    private DonUngTuyenRepository
+	    donUngTuyenRepository;
+
+    @Autowired
+    private SinhVienService sinhVienService;
+    
+    private final Path uploadPath = Paths.get("uploads/banner");
+    
+    @GetMapping("/NhaTuyenDung")
+    public ResponseEntity<List<NhaTuyenDung>> getAllNhaTuyenDung() {
+        return ResponseEntity.ok(sinhVienService.getAllNhaTuyenDung());
+    }
+    
+    @GetMapping("/BaiVietHuongNghiep")
+    public ResponseEntity<List<BaiVietHuongNghiep>> getAllBaiVietHuongNghiep(){
+    	return ResponseEntity.ok(sinhVienService.getAllBaiVietHuongNghiep());
+    }
+    
+    @GetMapping("/company_logos/{filename}")
+    public ResponseEntity<Resource> getAvatar(@PathVariable String filename) {
+        try {
+            // Đường dẫn tới tệp ảnh
+            Path filePath = Paths.get("uploads/company_logos/").resolve(filename);
+            Resource resource = new UrlResource(filePath.toUri());
+
+            // Kiểm tra nếu tài nguyên tồn tại và có thể đọc được
+            if (resource.exists() || resource.isReadable()) {
+                // Phân tích phần mở rộng của file để trả về MediaType phù hợp
+                String fileExtension = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+                MediaType mediaType = getMediaType(fileExtension);
+                
+                return ResponseEntity.ok()
+                        .contentType(mediaType)
+                        .body(resource);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(null);
+            }
+        } catch (MalformedURLException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }
+    }
+
+    private MediaType getMediaType(String fileExtension) {
+        switch (fileExtension) {
+            case "jpg":
+            case "jpeg":
+                return MediaType.IMAGE_JPEG;
+            case "png":
+                return MediaType.IMAGE_PNG;
+            case "gif":
+                return MediaType.IMAGE_GIF;
+            default:
+                return MediaType.APPLICATION_OCTET_STREAM; // Mặc định nếu không phải hình ảnh
+        }
+    }
+    
+    @GetMapping("/NhaTuyenDung/{id}")
+    public ResponseEntity<?> getNhaTuyenDungById(@PathVariable Integer id) {
+        NhaTuyenDung nhaTuyenDung = sinhVienService.getNhaTuyenDungById(id);
+        if (nhaTuyenDung == null) {
+            return ResponseEntity.status(404)
+                    .body("Không tìm thấy nhà tuyển dụng có ID: " + id);
+        }
+        return ResponseEntity.ok(nhaTuyenDung); 
+    }
+    
+//--------------Bài Đăng Tuyển Dụng ---------------------//
+    
+    @GetMapping("/bai-dang")
+    public List<BaiDangTuyenDung> getAllApprovedPosts() {
+        return sinhVienService.getBaiTuyenDungDaDuyet();
+    }
+    
+    @GetMapping("/banners/{filename:.+}")
+    public ResponseEntity<Resource> getBanner(@PathVariable String filename) {
+        try {
+            Path file = uploadPath.resolve(filename);
+            Resource resource = new UrlResource(file.toUri());
+            if (resource.exists() || resource.isReadable()) {
+                String contentType = Files.probeContentType(file);
+                return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .body(resource);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/ung-tuyen")
+    public ResponseEntity<?> getLichSuUngTuyen(@RequestParam int sinhVienId) {
+        try {
+            List<DonUngTuyen> ds = sinhVienService.getDonUngTuyenBySinhVien(sinhVienId);
+            return ResponseEntity.ok(ds);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+    
+    // Tạo đơn ứng tuyển
+    @PostMapping(value = "/ung-tuyen", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createDonUngTuyen(
+            @RequestParam int sinhVienId,
+            @RequestParam int baiDangId,
+            @RequestParam(value = "duongDanCv", required = false) MultipartFile duongDanCv) {
+        try {
+            String fileName = null;
+            if (duongDanCv != null && !duongDanCv.isEmpty()) {
+                String cleanName = duongDanCv.getOriginalFilename();
+                fileName = "cv_" + sinhVienId + "_" + System.currentTimeMillis() + "_" + cleanName;
+                Path cvPath = Paths.get("uploads/cv").resolve(fileName);
+                Files.createDirectories(cvPath.getParent());
+                Files.copy(duongDanCv.getInputStream(), cvPath);
+            }
+
+            // Truy vấn trực tiếp từ repository
+            SinhVien sinhVien = sinhVienRepository.findById(sinhVienId)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sinh viên"));
+
+            BaiDangTuyenDung baiDang = baiDangTuyenDungRepository.findById(baiDangId)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài đăng"));
+
+            DonUngTuyen don = new DonUngTuyen();
+            don.setNgayUngTuyen(new Timestamp(new Date().getTime()));
+            don.setDuongDanCv(fileName);
+            don.setSinhVien(sinhVien);
+            don.setBaiDangTuyenDung(baiDang);
+
+            DonUngTuyen saved = donUngTuyenRepository.save(don);
+            return ResponseEntity.ok(saved);
+
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Lỗi khi lưu CV: " + e.getMessage());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+}
+ 
+
+
+    // Xóa đơn ứng tuyển
+    @DeleteMapping("/huy-ung-tuyen/{idDon}")
+    public ResponseEntity<?> deleteDonUngTuyen(@RequestParam int sinhVienId, @PathVariable int idDon) {
+        try {
+            sinhVienService.deleteDonUngTuyen(sinhVienId, idDon);
+            return ResponseEntity.ok("Hủy đơn ứng tuyển thành công.");
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+}
